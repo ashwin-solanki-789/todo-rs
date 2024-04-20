@@ -120,16 +120,21 @@ impl Ui {
     //     self.list_curr = Some(id);
     // }
 
-    fn label(&mut self, text: &str, pair: i16){
+    fn label_fixed_width(&mut self, text: &str, width: usize, pair: i16) {
         let layout = self.layouts.last_mut().expect("Trying to render label outside of any layouts.");
         let pos = layout.get_pos();
         mv(pos.y, pos.x);
-
+    
         attron(COLOR_PAIR(pair));
         addstr(text).unwrap();
         attroff(COLOR_PAIR(pair));
+    
+        layout.add_widget(Demision::new(width as i32, 1));
+    }
 
-        layout.add_widget(Demision::new(text.len() as i32, 1));
+    #[allow(dead_code)]
+    fn label(&mut self, text: &str, pair: i16){
+        self.label_fixed_width(text, text.len(), pair)
     }
 
     // fn list_element(&mut self, text: &str, id: Id) {
@@ -278,7 +283,7 @@ fn main() {
     init_pair(HIGHLIGHT_PAIR, COLOR_BLACK, COLOR_WHITE);
 
     let mut quit = false;
-    let mut tab = Status::Todo;
+    let mut panel = Status::Todo;
 
     let mut ui = Ui::default();
 
@@ -289,16 +294,23 @@ fn main() {
 
     while !quit {
         erase(); // to clean terminal before printing anything.
+
+        let mut x = 0;
+        let mut y = 0;
+
+        getmaxyx(stdscr(), &mut y, &mut x);
+
         ui.begin(LayoutKind::Horz,Demision::new(0, 0));
         {
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("TODO", if tab == Status::Todo { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
+                ui.label_fixed_width("TODO", (x / 2) as usize , if panel == Status::Todo { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
                 // ui.begin_list(todo_curr);
                 for (index, todo) in todos.iter().enumerate() {
                     // ui.list_element(&format!("- [ ] {}",todo), index);
-                    ui.label(&format!("- [ ] {todo}"), 
-                        if index == todo_curr && tab == Status::Todo {
+                    ui.label_fixed_width(&format!("- [ ] {todo}"),
+                        (x / 2) as usize, 
+                        if index == todo_curr && panel == Status::Todo {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
@@ -310,12 +322,13 @@ fn main() {
 
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("DONE", if tab == Status::Done { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
+                ui.label_fixed_width("DONE", (x / 2) as usize, if panel == Status::Done { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
                 // ui.begin_list(done_curr);
                 for (index, done) in dones.iter().enumerate() {
                     // ui.list_element(&format!("- [x] {}",done),index);
-                    ui.label(&format!("- [*] {done}"), 
-                        if index == done_curr && tab == Status::Done {
+                    ui.label_fixed_width(&format!("- [*] {done}"),
+                        (x / 2) as usize, 
+                        if index == done_curr && panel == Status::Done {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
@@ -344,19 +357,19 @@ fn main() {
                 }
             },
             'w' | UP => {
-                match tab {
+                match panel {
                     Status::Todo => list_up(&mut todo_curr),
                     Status::Done => list_up(&mut done_curr)
                 }
             },
             's' | DOWN => {
-                match tab {
+                match panel {
                     Status::Todo => list_down(&todos, &mut todo_curr),
                     Status::Done => list_down(&dones, &mut done_curr)
                 }
             },
             '\n' => {
-                match tab {
+                match panel {
                     Status::Todo => list_transfer(&mut todos, &mut dones, &mut todo_curr),
                     Status::Done => list_transfer(&mut dones, &mut todos, &mut done_curr)
                 }
@@ -365,13 +378,13 @@ fn main() {
                 todo!();
             },
             '\t' => {
-                tab = tab.toggle();
+                panel = panel.toggle();
             },
             RIGHT => {
-                tab = tab.right();
+                panel = panel.right();
             },
             LEFT => {
-                tab = tab.left();
+                panel = panel.left();
             }
             _ => {}
         }
