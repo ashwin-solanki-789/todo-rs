@@ -9,7 +9,7 @@ use ncurses::*;
 const REGULAR_PAIR: i16 = 0;
 const HIGHLIGHT_PAIR: i16 = 1;
 
-type Id = usize;
+// type Id = usize;
 
 #[derive(Default, Copy, Clone)]
 struct Demision {
@@ -190,18 +190,18 @@ fn line_parse(line: &str) -> Option<(Status, &str)> {
     const TODO_PREFIX: &str = "TODO: ";
     const DONE_PREFIX: &str = "DONE: ";
 
-    if line.starts_with(TODO_PREFIX) {
-        return Some((Status::Todo, &line[TODO_PREFIX.len()..]))
+    if let Some(prefix) = line.strip_prefix(TODO_PREFIX) {
+        return Some((Status::Todo, prefix))
     }
 
-    if line.starts_with(DONE_PREFIX) {
-        return Some((Status::Done, &line[DONE_PREFIX.len()..]))
+    if let Some(prefix) = line.strip_prefix(DONE_PREFIX) {
+        return Some((Status::Done, prefix))
     }
 
-    return None;
+    None
 }
 
-fn list_down(list: &Vec<String>, list_curr: &mut usize) {
+fn list_down(list: &[String], list_curr: &mut usize) {
     if *list_curr + 1 < list.len() { 
         *list_curr += 1; 
     }
@@ -210,7 +210,7 @@ fn list_down(list: &Vec<String>, list_curr: &mut usize) {
 fn list_transfer(list_src: &mut Vec<String>, list_trans: &mut Vec<String>, list_curr: &mut usize) {
     if *list_curr < list_src.len() {
         list_trans.push(list_src.remove(*list_curr));
-        if *list_curr >= list_src.len() && list_src.len() > 0 {
+        if *list_curr >= list_src.len() && !list_src.is_empty() {
             *list_curr = list_src.len() - 1;
         }
     }
@@ -232,7 +232,7 @@ fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str)
     }
 }
 
-fn save_state(todos: &Vec<String>, dones: &Vec<String>, file_path: &str) {
+fn save_state(todos: &[String], dones: &[String], file_path: &str) {
     let mut file = File::create(file_path).unwrap();
     for todo in todos.iter() {
         writeln!(file, "TODO: {}", todo).unwrap();
@@ -293,8 +293,7 @@ fn main() {
         {
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("TODO:", REGULAR_PAIR);
-                // ui.label("------------", REGULAR_PAIR);
+                ui.label("TODO", if tab == Status::Todo { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
                 // ui.begin_list(todo_curr);
                 for (index, todo) in todos.iter().enumerate() {
                     // ui.list_element(&format!("- [ ] {}",todo), index);
@@ -311,8 +310,7 @@ fn main() {
 
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("DONE:", REGULAR_PAIR);
-                // ui.label("------------", REGULAR_PAIR);
+                ui.label("DONE", if tab == Status::Done { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
                 // ui.begin_list(done_curr);
                 for (index, done) in dones.iter().enumerate() {
                     // ui.list_element(&format!("- [x] {}",done),index);
