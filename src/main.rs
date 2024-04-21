@@ -14,16 +14,16 @@ const HIGHLIGHT_PAIR: i16 = 1;
 #[derive(Default, Copy, Clone)]
 struct Demision {
     x: i32,
-    y: i32
+    y: i32,
 }
- 
+
 impl Add for Demision {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
         Self {
             x: self.x + rhs.x,
-            y: self.y + rhs.y
+            y: self.y + rhs.y,
         }
     }
 }
@@ -31,26 +31,23 @@ impl Add for Demision {
 impl Mul for Demision {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self{
+    fn mul(self, rhs: Self) -> Self {
         Self {
             x: self.x * rhs.x,
-            y: self.y * rhs.y
+            y: self.y * rhs.y,
         }
     }
 }
 
 impl Demision {
     fn new(x: i32, y: i32) -> Self {
-        Self {
-            x,
-            y
-        }
+        Self { x, y }
     }
 }
 
-enum LayoutKind  {
+enum LayoutKind {
     Vert,
-    Horz
+    Horz,
 }
 
 struct Layout {
@@ -67,8 +64,8 @@ impl Layout {
     fn get_pos(&self) -> Demision {
         use LayoutKind::*;
         match self.kind {
-            Horz => self.pos + self.size * Demision::new(1,0),
-            Vert => self.pos + self.size * Demision::new(0,1),
+            Horz => self.pos + self.size * Demision::new(1, 0),
+            Vert => self.pos + self.size * Demision::new(0, 1),
         }
     }
 
@@ -78,11 +75,11 @@ impl Layout {
             Horz => {
                 self.size.x += size.x;
                 self.size.y = cmp::max(self.size.y, size.y);
-            },
+            }
             Vert => {
                 self.size.x = cmp::max(self.size.x, size.x);
                 self.size.y += size.y;
-            },
+            }
         }
     }
 }
@@ -90,28 +87,30 @@ impl Layout {
 #[derive(Default)]
 struct Ui {
     // list_curr: Option<Id>,
-    layouts: Vec<Layout>
+    layouts: Vec<Layout>,
 }
 
 impl Ui {
-
-    fn begin(&mut self,kind: LayoutKind, pos: Demision) {
+    fn begin(&mut self, kind: LayoutKind, pos: Demision) {
         assert!(self.layouts.is_empty());
-        self.layouts.push(Layout{
+        self.layouts.push(Layout {
             kind,
             pos,
-            size: Demision::new(0,0) 
+            size: Demision::new(0, 0),
         })
     }
 
-    fn begin_layout(&mut self, kind: LayoutKind){ 
-        let layout = self.layouts.last().expect("Can't create a layout outside of Ui::begin() and Ui::end()");
+    fn begin_layout(&mut self, kind: LayoutKind) {
+        let layout = self
+            .layouts
+            .last()
+            .expect("Can't create a layout outside of Ui::begin() and Ui::end()");
         let pos = layout.get_pos();
 
-        self.layouts.push(Layout{
+        self.layouts.push(Layout {
             kind,
             pos,
-            size: Demision::new(0,0)
+            size: Demision::new(0, 0),
         })
     }
 
@@ -121,26 +120,29 @@ impl Ui {
     // }
 
     fn label_fixed_width(&mut self, text: &str, width: usize, pair: i16) {
-        let layout = self.layouts.last_mut().expect("Trying to render label outside of any layouts.");
+        let layout = self
+            .layouts
+            .last_mut()
+            .expect("Trying to render label outside of any layouts.");
         let pos = layout.get_pos();
         mv(pos.y, pos.x);
-    
+
         attron(COLOR_PAIR(pair));
         addstr(text).unwrap();
         attroff(COLOR_PAIR(pair));
-    
+
         layout.add_widget(Demision::new(width as i32, 1));
     }
 
     #[allow(dead_code)]
-    fn label(&mut self, text: &str, pair: i16){
+    fn label(&mut self, text: &str, pair: i16) {
         self.label_fixed_width(text, text.len(), pair)
     }
 
     // fn list_element(&mut self, text: &str, id: Id) {
     //     let id_curr = self.list_curr.expect("Not allowed to create list element outside of lists");
     //     self.label(text, if id_curr == id {
-    //         HIGHLIGHT_PAIR   
+    //         HIGHLIGHT_PAIR
     //     } else {
     //         REGULAR_PAIR
     //     });
@@ -150,29 +152,35 @@ impl Ui {
     //     self.list_curr = None;
     // }
 
-    fn end_layout(&mut self){
-        let layout = self.layouts.pop().expect("Unbalanced Ui::begin_layout() and Ui::end_layout() calls.");
-        self.layouts.last_mut()
+    fn end_layout(&mut self) {
+        let layout = self
+            .layouts
+            .pop()
+            .expect("Unbalanced Ui::begin_layout() and Ui::end_layout() calls.");
+        self.layouts
+            .last_mut()
             .expect("Unbalanced Ui::begin_layout() and Ui::end_layout() calls.")
             .add_widget(layout.size);
     }
-    
+
     fn end(&mut self) {
-        self.layouts.pop().expect("Unbalanced Ui::begin() and Ui::end() calls.");
+        self.layouts
+            .pop()
+            .expect("Unbalanced Ui::begin() and Ui::end() calls.");
     }
 }
 
 #[derive(PartialEq, PartialOrd)]
 enum Status {
     Todo,
-    Done
+    Done,
 }
 
 impl Status {
-    fn toggle(self) ->  Self {
+    fn toggle(self) -> Self {
         match self {
             Status::Done => Status::Todo,
-            Status::Todo => Status::Done
+            Status::Todo => Status::Done,
         }
     }
 
@@ -185,9 +193,16 @@ impl Status {
     }
 }
 
+fn list_drag_up(list: &mut [String], list_curr: &mut usize) {
+    if *list_curr > 0 {
+        list.swap(*list_curr, *list_curr - 1);
+        *list_curr -= 1;
+    }
+}
+
 fn list_up(list_curr: &mut usize) {
-    if *list_curr > 0 { 
-        *list_curr -= 1; 
+    if *list_curr > 0 {
+        *list_curr -= 1;
     }
 }
 
@@ -196,19 +211,26 @@ fn line_parse(line: &str) -> Option<(Status, &str)> {
     const DONE_PREFIX: &str = "DONE: ";
 
     if let Some(prefix) = line.strip_prefix(TODO_PREFIX) {
-        return Some((Status::Todo, prefix))
+        return Some((Status::Todo, prefix));
     }
 
     if let Some(prefix) = line.strip_prefix(DONE_PREFIX) {
-        return Some((Status::Done, prefix))
+        return Some((Status::Done, prefix));
     }
 
     None
 }
 
+fn list_drag_down(list: &mut [String], list_curr: &mut usize) {
+    if *list_curr + 1 < list.len() {
+        list.swap(*list_curr, *list_curr + 1);
+        *list_curr += 1;
+    }
+}
+
 fn list_down(list: &[String], list_curr: &mut usize) {
-    if *list_curr + 1 < list.len() { 
-        *list_curr += 1; 
+    if *list_curr + 1 < list.len() {
+        *list_curr += 1;
     }
 }
 
@@ -223,7 +245,7 @@ fn list_transfer(list_src: &mut Vec<String>, list_trans: &mut Vec<String>, list_
 
 fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str) {
     let file = File::open(file_path).unwrap();
-    for (index,line) in BufReader::new(file).lines().enumerate() {
+    for (index, line) in BufReader::new(file).lines().enumerate() {
         if let Ok(i) = line {
             match line_parse(&i) {
                 Some((Status::Todo, title)) => todos.push(title.to_string()),
@@ -248,7 +270,6 @@ fn save_state(todos: &[String], dones: &[String], file_path: &str) {
 }
 
 fn main() {
-
     let mut args = env::args();
     args.next().unwrap();
 
@@ -261,7 +282,7 @@ fn main() {
         }
     };
 
-    let mut todos= Vec::<String>::new();
+    let mut todos = Vec::<String>::new();
     let mut todo_curr: usize = 0;
 
     let mut dones = Vec::<String>::new();
@@ -276,7 +297,7 @@ fn main() {
     // Allow for extended keyboard (like F1)
     keypad(stdscr(), true);
 
-    curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);  // make cursor invisible on terminal
+    curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE); // make cursor invisible on terminal
 
     start_color();
     init_pair(REGULAR_PAIR, COLOR_WHITE, COLOR_BLACK);
@@ -300,21 +321,30 @@ fn main() {
 
         getmaxyx(stdscr(), &mut y, &mut x);
 
-        ui.begin(LayoutKind::Horz,Demision::new(0, 0));
+        ui.begin(LayoutKind::Horz, Demision::new(0, 0));
         {
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label_fixed_width("TODO", (x / 2) as usize , if panel == Status::Todo { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
+                ui.label_fixed_width(
+                    "TODO",
+                    (x / 2) as usize,
+                    if panel == Status::Todo {
+                        HIGHLIGHT_PAIR
+                    } else {
+                        REGULAR_PAIR
+                    },
+                );
                 // ui.begin_list(todo_curr);
                 for (index, todo) in todos.iter().enumerate() {
                     // ui.list_element(&format!("- [ ] {}",todo), index);
-                    ui.label_fixed_width(&format!("- [ ] {todo}"),
-                        (x / 2) as usize, 
+                    ui.label_fixed_width(
+                        &format!("- [ ] {todo}"),
+                        (x / 2) as usize,
                         if index == todo_curr && panel == Status::Todo {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
-                        }
+                        },
                     )
                 }
             }
@@ -322,17 +352,26 @@ fn main() {
 
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label_fixed_width("DONE", (x / 2) as usize, if panel == Status::Done { HIGHLIGHT_PAIR } else { REGULAR_PAIR });
+                ui.label_fixed_width(
+                    "DONE",
+                    (x / 2) as usize,
+                    if panel == Status::Done {
+                        HIGHLIGHT_PAIR
+                    } else {
+                        REGULAR_PAIR
+                    },
+                );
                 // ui.begin_list(done_curr);
                 for (index, done) in dones.iter().enumerate() {
                     // ui.list_element(&format!("- [x] {}",done),index);
-                    ui.label_fixed_width(&format!("- [*] {done}"),
-                        (x / 2) as usize, 
+                    ui.label_fixed_width(
+                        &format!("- [*] {done}"),
+                        (x / 2) as usize,
                         if index == done_curr && panel == Status::Done {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
-                        }
+                        },
                     )
                 }
             }
@@ -355,38 +394,40 @@ fn main() {
                 for done in dones.iter() {
                     writeln!(file, "DONE: {}", done).unwrap();
                 }
+            }
+            'W' => match panel {
+                Status::Todo => list_drag_up(&mut todos, &mut todo_curr),
+                Status::Done => list_drag_up(&mut dones, &mut done_curr),
             },
-            'w' | UP => {
-                match panel {
-                    Status::Todo => list_up(&mut todo_curr),
-                    Status::Done => list_up(&mut done_curr)
-                }
+            'w' | UP => match panel {
+                Status::Todo => list_up(&mut todo_curr),
+                Status::Done => list_up(&mut done_curr),
             },
-            's' | DOWN => {
-                match panel {
-                    Status::Todo => list_down(&todos, &mut todo_curr),
-                    Status::Done => list_down(&dones, &mut done_curr)
-                }
+            'S' => match panel {
+                Status::Todo => list_drag_down(&mut todos, &mut todo_curr),
+                Status::Done => list_drag_down(&mut dones, &mut done_curr),
             },
-            '\n' => {
-                match panel {
-                    Status::Todo => list_transfer(&mut todos, &mut dones, &mut todo_curr),
-                    Status::Done => list_transfer(&mut dones, &mut todos, &mut done_curr)
-                }
+            's' | DOWN => match panel {
+                Status::Todo => list_down(&todos, &mut todo_curr),
+                Status::Done => list_down(&dones, &mut done_curr),
+            },
+            '\n' => match panel {
+                Status::Todo => list_transfer(&mut todos, &mut dones, &mut todo_curr),
+                Status::Done => list_transfer(&mut dones, &mut todos, &mut done_curr),
             },
             'i' => {
                 todo!();
-            },
+            }
             '\t' => {
                 panel = panel.toggle();
-            },
+            }
             RIGHT => {
                 panel = panel.right();
-            },
+            }
             LEFT => {
                 panel = panel.left();
             }
-            _ => {}
+            _ => todos.push(format!("{key}")),
         }
     }
 
